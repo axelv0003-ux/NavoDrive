@@ -933,6 +933,7 @@
       justify-content: center;
       background: #080c11;
       overflow: hidden;
+      pointer-events: auto !important;
     }
     #welcome-screen::before {
       content: '';
@@ -1529,11 +1530,69 @@
       </div>
     </div>
 
+    <div style="margin-top:20px;display:flex;gap:12px;z-index:9999;position:relative">
+      <button onclick="selectAppMode('velo')" style="padding:14px 24px;border-radius:14px;background:linear-gradient(135deg,#0ea8b0,#26c5cc);color:white;border:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(14,168,176,0.4)">🚴 Lancer Vélo</button>
+      <button onclick="selectAppMode('bus')" style="padding:14px 24px;border-radius:14px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;border:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(249,115,22,0.4)">🚌 Lancer Bus</button>
+    </div>
+
     <div class="welcome-footer">
       NovaDrive — Mobilité intelligente<br>
       <span style="color:#1e293b">OSM · Groq AI · ElevenLabs · Overpass</span>
     </div>
   </div>
+
+  <!-- SCRIPT AUTONOME ET IMMÉDIAT DE SÉLECTION DE MODE -->
+  <script>
+    function selectAppMode(mode) {
+      var ws = document.getElementById('welcome-screen');
+      if (ws) {
+        ws.style.setProperty('display', 'none', 'important');
+        ws.style.setProperty('visibility', 'hidden', 'important');
+        ws.style.setProperty('pointer-events', 'none', 'important');
+        ws.style.opacity = '0';
+      }
+
+      var swBtn = document.getElementById('btn-switch-mode');
+      if (swBtn) swBtn.style.display = 'block';
+
+      var mapCtrl = document.getElementById('map-controls');
+      if (mapCtrl) mapCtrl.style.display = 'flex';
+
+      if (mode === 'velo') {
+        var veloP = document.getElementById('panel');
+        if (veloP) veloP.style.display = 'flex';
+        var busP = document.getElementById('bus-panel');
+        if (busP) busP.classList.remove('active');
+      } else {
+        var busP = document.getElementById('bus-panel');
+        if (busP) busP.classList.add('active');
+        var veloP = document.getElementById('panel');
+        if (veloP) veloP.style.display = 'none';
+      }
+
+      try { if (typeof updateSpeedometer === 'function') updateSpeedometer(0, 10); } catch(e){}
+      try { if (typeof requestGeolocation === 'function') requestGeolocation(); } catch(e){}
+      try { if (typeof tts !== 'undefined' && tts.speak) tts.speak(mode === 'velo' ? 'Mode vélo activé.' : 'Mode bus activé.'); } catch(e){}
+    }
+    window.selectAppMode = selectAppMode;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var cardVelo = document.getElementById('card-velo');
+      var cardBus = document.getElementById('card-bus');
+
+      function handleVelo(e) { e.preventDefault(); selectAppMode('velo'); }
+      function handleBus(e) { e.preventDefault(); selectAppMode('bus'); }
+
+      if (cardVelo) {
+        cardVelo.onclick = function() { selectAppMode('velo'); };
+        cardVelo.ontouchstart = function() { selectAppMode('velo'); };
+      }
+      if (cardBus) {
+        cardBus.onclick = function() { selectAppMode('bus'); };
+        cardBus.ontouchstart = function() { selectAppMode('bus'); };
+      }
+    });
+  </script>
 
   <!-- MAP -->
   <div id="map"></div>
