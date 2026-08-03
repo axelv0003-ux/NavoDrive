@@ -1502,6 +1502,25 @@
   <!--  ÉCRAN D'ACCUEIL                                           -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <div id="welcome-screen">
+    <!-- Bouton fermeture directe pour voir la carte immédiatement -->
+    <button onclick="selectAppMode('velo')" title="Fermer et voir la carte" style="
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #94a3b8;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+    ">✕</button>
+
     <div class="welcome-logo">
       <div class="welcome-logo-icon">⚡</div>
       <div class="welcome-title">NovaDrive</div>
@@ -1568,6 +1587,13 @@
         if (busP) busP.classList.add('active');
         var veloP = document.getElementById('panel');
         if (veloP) veloP.style.display = 'none';
+      }
+
+      // Redimensionner la carte Leaflet (force le chargement des tuiles)
+      if (typeof map !== 'undefined' && map) {
+        setTimeout(function() {
+          map.invalidateSize();
+        }, 80);
       }
 
       try { if (typeof updateSpeedometer === 'function') updateSpeedometer(0, 10); } catch(e){}
@@ -2069,25 +2095,21 @@
       attributionControl: true
     });
 
-    // Dark tile layer (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
+    // Tuiles standard OpenStreetMap (rapides et 100% fiables)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
     }).addTo(map);
-
-    // Cycling layer (OpenCycleMap – hidden by default)
-    cyclingLayer = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      opacity: 0.7,
-      attribution: '&copy; <a href="https://cycling.waymarkedtrails.org">Waymarked Trails</a>'
-    });
 
     // Bus markers layer group
     busMarkersLayer = L.layerGroup();
 
     // Map click handler
     map.on('click', onMapClick);
+
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 200);
   }
 
   // ── GEOLOCATION & SPEEDOMETER ─────────────────────────────────
