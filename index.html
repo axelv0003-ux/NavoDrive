@@ -941,6 +941,7 @@
       background: radial-gradient(circle, rgba(14,168,176,0.12) 0%, transparent 70%);
       top: -100px; left: -100px;
       animation: driftA 8s ease-in-out infinite alternate;
+      pointer-events: none !important;
     }
     #welcome-screen::after {
       content: '';
@@ -949,6 +950,7 @@
       background: radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%);
       bottom: -80px; right: -80px;
       animation: driftB 10s ease-in-out infinite alternate;
+      pointer-events: none !important;
     }
     @keyframes driftA { to { transform: translate(60px, 40px); } }
     @keyframes driftB { to { transform: translate(-40px, -60px); } }
@@ -999,10 +1001,14 @@
       border-radius: 24px;
       padding: 36px 24px;
       text-align: center;
-      cursor: pointer;
+      cursor: pointer !important;
       transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
       position: relative;
       overflow: hidden;
+      z-index: 100 !important;
+      pointer-events: auto !important;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .mode-card::before {
       content: '';
@@ -3180,6 +3186,16 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
     disableAutoFollow();
   });
 
+  // Direct listeners pour garantir le clic sur mobile/iOS
+  document.getElementById('card-velo')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectAppMode('velo');
+  });
+  document.getElementById('card-bus')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectAppMode('bus');
+  });
+
   // Keyboard shortcut
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isPickingFromMap) stopPickMode();
@@ -3193,33 +3209,34 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
 
   function selectAppMode(mode) {
     currentAppMode = mode;
-    // Transition de sortie
     const ws = document.getElementById('welcome-screen');
-    ws.style.transition = 'opacity 0.4s';
-    ws.style.opacity = '0';
-    ws.style.pointerEvents = 'none';
-    setTimeout(() => {
-      ws.style.display = 'none';
-      document.getElementById('btn-switch-mode').style.display = 'block';
-      updateSpeedometer(0, 10);
-      requestGeolocation();
+    if (ws) {
+      ws.style.transition = 'opacity 0.3s ease';
+      ws.style.opacity = '0';
+      ws.style.pointerEvents = 'none';
+      setTimeout(() => {
+        ws.style.display = 'none';
+      }, 300);
+    }
 
-      if (mode === 'velo') {
-        document.getElementById('panel').style.display = 'flex';
-        document.getElementById('map-controls').style.display = 'flex';
-        tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.');
-      } else {
-        document.getElementById('bus-panel').classList.add('active');
-        document.getElementById('map-controls').style.display = 'flex';
-        tts.speak('Mode bus activé. Où souhaitez-vous aller ?');
-        // Autocomplete sur champ bus
-        setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
-          busDestLatLng = { lat, lng, name };
-          document.getElementById('bus-dest-input').value = name;
-          map.flyTo([lat, lng], 14, { duration: 0.8 });
-        });
-      }
-    }, 400);
+    document.getElementById('btn-switch-mode').style.display = 'block';
+    updateSpeedometer(0, 10);
+    requestGeolocation();
+
+    if (mode === 'velo') {
+      document.getElementById('panel').style.display = 'flex';
+      document.getElementById('map-controls').style.display = 'flex';
+      tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.');
+    } else {
+      document.getElementById('bus-panel').classList.add('active');
+      document.getElementById('map-controls').style.display = 'flex';
+      tts.speak('Mode bus activé. Où souhaitez-vous aller ?');
+      setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
+        busDestLatLng = { lat, lng, name };
+        document.getElementById('bus-dest-input').value = name;
+        map.flyTo([lat, lng], 14, { duration: 0.8 });
+      });
+    }
   }
 
   // Cacher le panneau vélo par défaut
