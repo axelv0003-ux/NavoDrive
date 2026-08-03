@@ -68,16 +68,22 @@
       margin: 0;
       padding: 0;
       height: 100vh;
-      overflow: hidden;
+      width: 100vw;
+      overflow: hidden; /* Prevent scrollbars from oversized map */
     }
 
     /* ===== MAP ===== */
     #map {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      top: 50%;
+      left: 50%;
+      width: 150vmax;
+      height: 150vmax;
+      transform: translate(-50%, -50%) rotate(0deg);
+      transform-origin: center center;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 1;
+      background: #0a0e14;
     }
 
     /* ===== PANEL ===== */
@@ -2151,6 +2157,17 @@
   let userAccuracyCircle = null;
   let isAutoFollowing = false; // Suivi en direct sur la carte
   let currentUserPos = null;
+  let currentHeading = 0;
+
+  function getBearing(lat1, lng1, lat2, lng2) {
+    const toRad = deg => deg * Math.PI / 180;
+    const toDeg = rad => rad * 180 / Math.PI;
+    const dLng = toRad(lng2 - lng1);
+    const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+              Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  }
 
   function enableAutoFollow() {
     isAutoFollowing = true;
@@ -2166,6 +2183,9 @@
       isAutoFollowing = false;
       const btn = document.getElementById('btn-recenter-gps');
       if (btn) btn.style.display = 'flex';
+      // Réinitialiser la rotation pour que le nord soit en haut
+      const mapEl = document.getElementById('map');
+      if (mapEl) mapEl.style.transform = 'translate(-50%, -50%) rotate(0deg)';
     }
   }
 
@@ -2174,9 +2194,13 @@
     placeUserMarker(lat, lng, accuracy);
     updateSpeedometer(speedKmh, accuracy);
 
-    // Suivi automatique et centrage en direct
+    // Suivi automatique, centrage en direct et orientation de la carte
     if (isAutoFollowing && map) {
       map.panTo([lat, lng], { animate: true, duration: 0.6 });
+      if (currentHeading !== null && speedKmh > 2.5) { // Éviter la rotation intempestive à l'arrêt
+         const mapEl = document.getElementById('map');
+         if (mapEl) mapEl.style.transform = `translate(-50%, -50%) rotate(${-currentHeading}deg)`;
+      }
     }
   }
 
@@ -2188,6 +2212,7 @@
     const onPosSuccess = (pos) => {
       const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
       let speedKmh = 0;
+      let heading = pos.coords.heading; // Heading natif du GPS (degrés)
 
       if (speed !== null && speed !== undefined && !isNaN(speed)) {
         speedKmh = speed * 3.6;
@@ -2198,6 +2223,17 @@
           speedKmh = (distM / dt) * 3.6;
         }
       }
+
+      // Si le heading natif n'est pas dispo, on le calcule
+      if (heading === null || isNaN(heading)) {
+        if (lastPos && speedKmh > 2.5) {
+          heading = getBearing(lastPos.lat, lastPos.lng, lat, lng);
+        }
+      }
+      if (heading !== null && !isNaN(heading)) {
+        currentHeading = heading;
+      }
+
       lastPos = { lat, lng };
       lastTime = Date.now();
 
@@ -2208,26 +2244,27 @@
     mainWatchId = navigator.geolocation.watchPosition(
       onPosSuccess,
       (err) => {
+        if (err.code === 1) return; // Permission refusée, on arrête d'essayer
         console.warn('High accuracy watchPosition failed, fallback to standard accuracy:', err.message);
         // 2. Bascule automatique sans haute précision (Wi-Fi/IP/GPS hybride)
         if (mainWatchId !== null) navigator.geolocation.clearWatch(mainWatchId);
         mainWatchId = navigator.geolocation.watchPosition(
           onPosSuccess,
           (err2) => console.warn('Standard watchPosition warning:', err2.message),
-          { enableHighAccuracy: false, maximumAge: 5000, timeout: 15000 }
+          { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
         );
       },
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 }
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
   }
 
   function requestGeolocation() {
     if (!navigator.geolocation) {
-      showError('La géolocalisation n\'est pas supportée par ce navigateur.');
+      showError('GPS non supporté. (Sur mobile, une connexion HTTPS sécurisée est souvent requise)');
       return;
     }
 
-    // Premier fix rapide
+    // Premier fix rapide avec timeouts augmentés pour mobile
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
@@ -2237,6 +2274,10 @@
         setStartPoint(lat, lng, 'Ma position (GPS)');
       },
       (err) => {
+        if (err.code === 1) {
+          showError('Accès au GPS refusé par votre navigateur.');
+          return;
+        }
         // Fallback basse précision si refus ou timeout
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -2246,11 +2287,14 @@
             placeUserMarker(lat, lng, accuracy);
             setStartPoint(lat, lng, 'Ma position (GPS)');
           },
-          (e) => console.warn('Initial position fallback error:', e.message),
-          { enableHighAccuracy: false, timeout: 8000 }
+          (e) => {
+            console.warn('Initial position fallback error:', e.message);
+            showError('Impossible de trouver votre position GPS actuelle.');
+          },
+          { enableHighAccuracy: false, timeout: 10000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 5000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
 
     // Lancer le suivi continu résilient
@@ -2298,13 +2342,24 @@
   }
 
   function goToMyLocation() {
+    if (!navigator.geolocation) {
+      showError('GPS non supporté. (Sur mobile, une connexion HTTPS sécurisée est souvent requise)');
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         map.flyTo([lat, lng], 16, { duration: 1.2 });
         placeUserMarker(lat, lng, accuracy);
       },
-      () => showError('Impossible d\'accéder à votre position.')
+      (err) => {
+        if (err.code === 1) {
+          showError('Accès au GPS refusé par votre navigateur.');
+        } else {
+          showError('Impossible d\'accéder à votre position.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   }
 
