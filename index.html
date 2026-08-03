@@ -1413,7 +1413,7 @@
         width: 76px;
         height: 76px;
       }
-      #speedometer.active, #speedometer {
+      #speedometer.active {
         display: flex !important;
       }
       #speed-val {
@@ -2113,8 +2113,6 @@
   }
 
   // ── GEOLOCATION & SPEEDOMETER ─────────────────────────────────
-  let mainWatchId = null;
-  let userAccuracyCircle = null;
 
   function updateSpeedometer(speedKmh, accuracy) {
     try {
