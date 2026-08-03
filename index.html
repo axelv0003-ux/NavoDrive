@@ -1301,6 +1301,184 @@
       background: #34d399;
       animation: pulse-hint 1.5s infinite;
     }
+
+    /* Panel Collapse Button */
+    .panel-toggle-btn {
+      margin-left: auto;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #94a3b8;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .panel-toggle-btn:hover {
+      color: white;
+      background: rgba(255,255,255,0.12);
+    }
+
+    /* ===== MOBILE RESPONSIVE OVERHAUL (iOS & Android) ===== */
+    @media (max-width: 640px) {
+      /* Anti-zoom iOS Safari */
+      input.route-input, input.api-key-input {
+        font-size: 16px !important;
+      }
+
+      /* Welcome Screen Mobile */
+      #welcome-screen {
+        padding: 24px 16px;
+        justify-content: flex-start;
+        padding-top: 10vh;
+      }
+      .welcome-logo {
+        margin-bottom: 6px;
+      }
+      .welcome-title {
+        font-size: 26px;
+      }
+      .welcome-sub {
+        margin-bottom: 24px;
+        font-size: 12px;
+      }
+      .mode-cards {
+        flex-direction: column;
+        gap: 14px;
+        width: 100%;
+        max-width: 320px;
+      }
+      .mode-card {
+        width: 100%;
+        padding: 20px 18px;
+        border-radius: 18px;
+      }
+      .mode-card-icon {
+        font-size: 38px;
+        margin-bottom: 8px;
+      }
+      .mode-card-title {
+        font-size: 17px;
+        margin-bottom: 4px;
+      }
+      .mode-card-desc {
+        font-size: 11px;
+      }
+      .welcome-footer {
+        margin-top: 24px;
+      }
+
+      /* Side Panels Mobile */
+      #panel, #bus-panel {
+        top: 12px;
+        left: 12px;
+        width: calc(100vw - 24px);
+        max-height: 52vh;
+        border-radius: 20px;
+        transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.75);
+      }
+
+      #panel.collapsed, #bus-panel.collapsed {
+        max-height: 62px;
+        overflow: hidden;
+      }
+
+      #panel-body {
+        padding: 12px 16px 16px;
+      }
+
+      /* Speedometer Mobile */
+      #speedometer {
+        bottom: 85px;
+        right: 12px;
+        width: 76px;
+        height: 76px;
+      }
+      #speedometer.active, #speedometer {
+        display: flex !important;
+      }
+      #speed-val {
+        font-size: 18px;
+      }
+      #speed-unit {
+        font-size: 8px;
+      }
+
+      /* GPS Chip Mobile */
+      #gps-accuracy-chip {
+        bottom: 60px;
+        right: 12px;
+        font-size: 9px;
+        padding: 3px 8px;
+      }
+
+      /* Map Controls Mobile */
+      #map-controls {
+        top: auto;
+        bottom: 170px;
+        right: 12px;
+        gap: 6px;
+      }
+      .map-ctrl-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 15px;
+      }
+
+      /* Nav Banner Mobile */
+      #nav-banner {
+        top: 12px;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        min-width: 0;
+        max-width: none;
+        padding: 10px 14px;
+      }
+      .nav-arrow {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+      }
+      .nav-main {
+        font-size: 13px;
+      }
+
+      /* Arrival Banner Mobile */
+      #bus-arrival-banner {
+        bottom: 75px;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        white-space: normal;
+        padding: 10px 16px;
+        font-size: 12px;
+        border-radius: 16px;
+        text-align: center;
+      }
+
+      /* Bottom Bar Mobile */
+      #bottom-bar {
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        min-width: 0;
+      }
+
+      /* Mode switch button Mobile */
+      #btn-switch-mode {
+        bottom: 12px;
+        right: 12px;
+        padding: 7px 12px;
+        font-size: 11px;
+      }
+    }
   </style>
 </head>
 
@@ -1353,7 +1531,7 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
   <div id="bus-panel" class="glass-card">
     <!-- Header bus -->
-    <div style="padding:18px 20px 14px">
+    <div style="padding:18px 20px 14px;display:flex;align-items:center">
       <div class="logo-badge">
         <div class="logo-icon" style="background:linear-gradient(135deg,#f97316,#fb923c)">🚌</div>
         <div>
@@ -1361,6 +1539,9 @@
           <div class="logo-sub">Transports en commun IA</div>
         </div>
       </div>
+      <button class="panel-toggle-btn" onclick="togglePanelCollapse(this)" title="Réduire / Agrandir">
+        <i class="fa fa-chevron-up"></i>
+      </button>
     </div>
 
     <!-- Search destination bus -->
@@ -1466,7 +1647,7 @@
   <!-- SIDE PANEL -->
   <div id="panel" class="glass-card fade-in">
     <!-- Header -->
-    <div id="panel-header">
+    <div id="panel-header" style="display:flex;align-items:center">
       <div class="logo-badge">
         <div class="logo-icon"><i class="fa-solid fa-bicycle" style="color:white"></i></div>
         <div>
@@ -1474,6 +1655,9 @@
           <div class="logo-sub">Itinéraires intelligents</div>
         </div>
       </div>
+      <button class="panel-toggle-btn" onclick="togglePanelCollapse(this)" title="Réduire / Agrandir">
+        <i class="fa fa-chevron-up"></i>
+      </button>
     </div>
 
     <!-- Scrollable body -->
@@ -2869,6 +3053,21 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
     setTimeout(() => tts.speak(type === 'quebec' ? 'Bonjour, je suis votre guide pour ce trajet !' : 'Bonjour, je suis votre guide pour ce trajet.'), 800);
   }
 
+  // ── REDUCTION DU PANNEAU (MOBILE) ─────────────────────────────
+  function togglePanelCollapse(btn) {
+    const glassCard = btn.closest('.glass-card');
+    if (!glassCard) return;
+    glassCard.classList.toggle('collapsed');
+    const icon = btn.querySelector('i');
+    if (icon) {
+      if (glassCard.classList.contains('collapsed')) {
+        icon.className = 'fa fa-chevron-down';
+      } else {
+        icon.className = 'fa fa-chevron-up';
+      }
+    }
+  }
+
   // ── BOOT ─────────────────────────────────────────────────────
   initMap();
   requestGeolocation();
@@ -2898,14 +3097,16 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
     setTimeout(() => {
       ws.style.display = 'none';
       document.getElementById('btn-switch-mode').style.display = 'block';
+      updateSpeedometer(0, 10);
+      requestGeolocation();
+
       if (mode === 'velo') {
         document.getElementById('panel').style.display = 'flex';
         document.getElementById('map-controls').style.display = 'flex';
-        tts.speak('Mode vélo activé. Bienvenue dans VéloRoute IA.');
+        tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.');
       } else {
         document.getElementById('bus-panel').classList.add('active');
         document.getElementById('map-controls').style.display = 'flex';
-        requestGeolocation();
         tts.speak('Mode bus activé. Où souhaitez-vous aller ?');
         // Autocomplete sur champ bus
         setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
@@ -2927,6 +3128,11 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
     document.getElementById('panel').style.display = 'none';
     document.getElementById('bus-panel').classList.remove('active');
     document.getElementById('btn-switch-mode').style.display = 'none';
+    const spdEl = document.getElementById('speedometer');
+    if (spdEl) spdEl.classList.remove('active');
+    const chipEl = document.getElementById('gps-accuracy-chip');
+    if (chipEl) chipEl.classList.remove('active');
+
     const ws = document.getElementById('welcome-screen');
     ws.style.display = 'flex';
     ws.style.opacity = '0';
