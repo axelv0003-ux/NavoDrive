@@ -1511,7 +1511,7 @@
       <!-- VÉLO -->
       <div class="mode-card"
            style="--card-color:#26c5cc;--card-shadow:rgba(38,197,204,0.25);--card-glow:linear-gradient(135deg,rgba(14,168,176,0.1),transparent)"
-           onclick="selectAppMode('velo')" id="card-velo">
+           onclick="window.selectAppMode('velo')" id="card-velo">
         <span class="mode-card-icon">🚴</span>
         <div class="mode-card-title">Vélo / Marche</div>
         <div class="mode-card-desc">Itinéraires intelligents avec l'IA. Évitez le trafic, trouvez les pistes cyclables.</div>
@@ -1521,7 +1521,7 @@
       <!-- BUS -->
       <div class="mode-card"
            style="--card-color:#f97316;--card-shadow:rgba(249,115,22,0.25);--card-glow:linear-gradient(135deg,rgba(249,115,22,0.1),transparent)"
-           onclick="selectAppMode('bus')" id="card-bus">
+           onclick="window.selectAppMode('bus')" id="card-bus">
         <span class="mode-card-icon">🚌</span>
         <div class="mode-card-title">Transports Bus</div>
         <div class="mode-card-desc">Lignes, arrêts et navigation vocale. Couvre Tadao, Transpole, RATP et +500 réseaux mondiaux.</div>
@@ -1914,8 +1914,61 @@
 
   <script>
   /* ==========================================================
-     VELROUTE IA – Application Logic
+     NOVADRIVE IA – Application Logic
      ========================================================== */
+
+  // ── SÉLECTEUR DE MODE GLOBAL (DÉCLARATION IMMÉDIATE) ─────────
+  let currentAppMode = null;
+
+  function selectAppMode(mode) {
+    console.log('selectAppMode called with mode:', mode);
+    currentAppMode = mode;
+
+    // 1. Masquage instantané synchrone de l'écran d'accueil
+    const ws = document.getElementById('welcome-screen');
+    if (ws) {
+      ws.style.display = 'none';
+      ws.style.pointerEvents = 'none';
+      ws.style.opacity = '0';
+    }
+
+    // 2. Affichage des panneaux
+    try {
+      const swBtn = document.getElementById('btn-switch-mode');
+      if (swBtn) swBtn.style.display = 'block';
+
+      const mapCtrl = document.getElementById('map-controls');
+      if (mapCtrl) mapCtrl.style.display = 'flex';
+
+      if (mode === 'velo') {
+        const veloPanel = document.getElementById('panel');
+        if (veloPanel) veloPanel.style.display = 'flex';
+        const busPanel = document.getElementById('bus-panel');
+        if (busPanel) busPanel.classList.remove('active');
+        try { tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.'); } catch {}
+      } else {
+        const busPanel = document.getElementById('bus-panel');
+        if (busPanel) busPanel.classList.add('active');
+        const veloPanel = document.getElementById('panel');
+        if (veloPanel) veloPanel.style.display = 'none';
+        try { tts.speak('Mode bus activé. Où souhaitez-vous aller ?'); } catch {}
+        setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
+          busDestLatLng = { lat, lng, name };
+          const inp = document.getElementById('bus-dest-input');
+          if (inp) inp.value = name;
+          if (map) map.flyTo([lat, lng], 14, { duration: 0.8 });
+        });
+      }
+
+      try { updateSpeedometer(0, 10); } catch {}
+      try { requestGeolocation(); } catch {}
+    } catch (e) {
+      console.error('Error during mode switch:', e);
+    }
+  }
+
+  // Exposer dans window
+  window.selectAppMode = selectAppMode;
 
   // ── CONFIG ──────────────────────────────────────────────────
   const GROQ_API_KEY_DEFAULT = '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';
@@ -1988,32 +2041,34 @@
   let userAccuracyCircle = null;
 
   function updateSpeedometer(speedKmh, accuracy) {
-    const spdEl = document.getElementById('speedometer');
-    const chipEl = document.getElementById('gps-accuracy-chip');
-    if (!spdEl) return;
+    try {
+      const spdEl = document.getElementById('speedometer');
+      const chipEl = document.getElementById('gps-accuracy-chip');
+      if (spdEl) spdEl.classList.add('active');
+      if (chipEl) chipEl.classList.add('active');
 
-    spdEl.classList.add('active');
-    if (chipEl) chipEl.classList.add('active');
+      const rounded = Math.max(0, Math.round(speedKmh || 0));
+      const valEl = document.getElementById('speed-val');
+      if (valEl) valEl.textContent = rounded;
 
-    const rounded = Math.max(0, Math.round(speedKmh || 0));
-    document.getElementById('speed-val').textContent = rounded;
+      const maxSpeed = 60;
+      const ratio = Math.min(rounded / maxSpeed, 1);
+      const maxArcLength = 175;
+      const currentLength = ratio * maxArcLength;
+      const arcEl = document.getElementById('speed-arc');
+      if (arcEl) {
+        arcEl.style.strokeDasharray = `${currentLength} 239`;
+        if (rounded > 45) arcEl.style.stroke = '#ef4444';
+        else if (rounded > 25) arcEl.style.stroke = '#f97316';
+        else arcEl.style.stroke = '#26c5cc';
+      }
 
-    // Arc calculation (max 60 km/h)
-    const maxSpeed = 60;
-    const ratio = Math.min(rounded / maxSpeed, 1);
-    const maxArcLength = 175; // arc length out of 239 circumference
-    const currentLength = ratio * maxArcLength;
-    const arcEl = document.getElementById('speed-arc');
-    if (arcEl) {
-      arcEl.style.strokeDasharray = `${currentLength} 239`;
-      // Gradation de couleur selon vitesse
-      if (rounded > 45) arcEl.style.stroke = '#ef4444';
-      else if (rounded > 25) arcEl.style.stroke = '#f97316';
-      else arcEl.style.stroke = '#26c5cc';
-    }
-
-    if (accuracy && document.getElementById('gps-accuracy-text')) {
-      document.getElementById('gps-accuracy-text').textContent = `GPS ±${Math.round(accuracy)}m`;
+      const accText = document.getElementById('gps-accuracy-text');
+      if (accuracy && accText) {
+        accText.textContent = `GPS ±${Math.round(accuracy)}m`;
+      }
+    } catch (err) {
+      console.warn('updateSpeedometer non-blocking error:', err);
     }
   }
 
@@ -3205,39 +3260,6 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
   /* ================================================================
      MODE SÉLECTEUR D'ACCUEIL
   ================================================================ */
-  let currentAppMode = null;
-
-  function selectAppMode(mode) {
-    currentAppMode = mode;
-    const ws = document.getElementById('welcome-screen');
-    if (ws) {
-      ws.style.transition = 'opacity 0.3s ease';
-      ws.style.opacity = '0';
-      ws.style.pointerEvents = 'none';
-      setTimeout(() => {
-        ws.style.display = 'none';
-      }, 300);
-    }
-
-    document.getElementById('btn-switch-mode').style.display = 'block';
-    updateSpeedometer(0, 10);
-    requestGeolocation();
-
-    if (mode === 'velo') {
-      document.getElementById('panel').style.display = 'flex';
-      document.getElementById('map-controls').style.display = 'flex';
-      tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.');
-    } else {
-      document.getElementById('bus-panel').classList.add('active');
-      document.getElementById('map-controls').style.display = 'flex';
-      tts.speak('Mode bus activé. Où souhaitez-vous aller ?');
-      setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
-        busDestLatLng = { lat, lng, name };
-        document.getElementById('bus-dest-input').value = name;
-        map.flyTo([lat, lng], 14, { duration: 0.8 });
-      });
-    }
-  }
 
   // Cacher le panneau vélo par défaut
   document.getElementById('panel').style.display = 'none';
