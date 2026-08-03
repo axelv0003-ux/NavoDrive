@@ -1986,8 +1986,9 @@
     // 1. Masquage instantané synchrone de l'écran d'accueil
     const ws = document.getElementById('welcome-screen');
     if (ws) {
-      ws.style.display = 'none';
-      ws.style.pointerEvents = 'none';
+      ws.style.setProperty('display', 'none', 'important');
+      ws.style.setProperty('visibility', 'hidden', 'important');
+      ws.style.setProperty('pointer-events', 'none', 'important');
       ws.style.opacity = '0';
     }
 
@@ -2004,23 +2005,17 @@
         if (veloPanel) veloPanel.style.display = 'flex';
         const busPanel = document.getElementById('bus-panel');
         if (busPanel) busPanel.classList.remove('active');
-        try { tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.'); } catch {}
+        try { tts.speak('Mode vélo activé. Bienvenue dans NovaDrive.'); } catch(e){}
       } else {
         const busPanel = document.getElementById('bus-panel');
         if (busPanel) busPanel.classList.add('active');
         const veloPanel = document.getElementById('panel');
         if (veloPanel) veloPanel.style.display = 'none';
-        try { tts.speak('Mode bus activé. Où souhaitez-vous aller ?'); } catch {}
-        setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
-          busDestLatLng = { lat, lng, name };
-          const inp = document.getElementById('bus-dest-input');
-          if (inp) inp.value = name;
-          if (map) map.flyTo([lat, lng], 14, { duration: 0.8 });
-        });
+        try { tts.speak('Mode bus activé. Où souhaitez-vous aller ?'); } catch(e){}
       }
 
-      try { updateSpeedometer(0, 10); } catch {}
-      try { requestGeolocation(); } catch {}
+      try { updateSpeedometer(0, 10); } catch(e){}
+      try { requestGeolocation(); } catch(e){}
     } catch (e) {
       console.error('Error during mode switch:', e);
     }
@@ -3289,16 +3284,36 @@ Génère exactement le tableau JSON des waypoints intermédiaires entre ces deux
   }
 
   // ── BOOT ─────────────────────────────────────────────────────
-  initMap();
-  requestGeolocation();
+  try {
+    initMap();
+    requestGeolocation();
+
+    setupAutocomplete('input-start', 'ac-start', (lat, lng, name) => {
+      setStartPoint(lat, lng, name);
+      map.flyTo([lat, lng], 14, { duration: 0.8 });
+    });
+    setupAutocomplete('input-end', 'ac-end', (lat, lng, name) => {
+      setEndPoint(lat, lng, name);
+      map.flyTo([lat, lng], 14, { duration: 0.8 });
+    });
+    setupAutocomplete('bus-dest-input', 'ac-bus-dest', (lat, lng, name) => {
+      busDestLatLng = { lat, lng, name };
+      document.getElementById('bus-dest-input').value = name;
+      map.flyTo([lat, lng], 14, { duration: 0.8 });
+    });
+  } catch (e) {
+    console.warn('Boot initialization warning:', e);
+  }
 
   // Attach moveend for bus stops after map init
-  map.on('moveend', () => {
-    if (busStopsVisible) toggleBusStops(true);
-  });
-  map.on('dragstart', () => {
-    disableAutoFollow();
-  });
+  if (map) {
+    map.on('moveend', () => {
+      if (busStopsVisible) toggleBusStops(true);
+    });
+    map.on('dragstart', () => {
+      disableAutoFollow();
+    });
+  }
 
   // Direct listeners pour garantir le clic sur mobile/iOS
   document.getElementById('card-velo')?.addEventListener('click', (e) => {
